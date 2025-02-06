@@ -22,6 +22,10 @@ _start:
     cmp al, '2'      
     jne exit_fail    
 
+    mov al, [input+2]
+    cmp al, 10       ; Vérifie si c'est '\n'
+    jne exit_fail    
+
     mov rax, 1      
     mov rdi, 1      
     mov rsi, message 
