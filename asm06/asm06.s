@@ -1,109 +1,94 @@
-section .bss
-    result resb 20
+section .data
+    space db " ", 0
+    newline db 10, 0
 
 section .text
-    global _start
+global _start
 
 _start:
     pop rcx         ; nombre d'arguments
-    cmp rcx, 3      ; vérifier si on a 2 arguments
+    cmp rcx, 3      ; vérifier 2 arguments
     jne exit_error
+    
+    pop rcx         ; nom programme
+    pop rsi         ; premier arg
+    pop rdi         ; deuxième arg
 
-    pop rcx         ; ignorer le nom du programme
-    pop rsi         ; premier nombre
-    call atoi      
-    push rax       
+    ; Convertir et additionner
+    call str_to_int  ; rsi -> rax
+    push rax
+    mov rsi, rdi
+    call str_to_int  ; rdi -> rax
+    pop rdi
+    add rax, rdi    ; addition
 
-    pop rsi         ; deuxième nombre
-    call atoi      
-    push rax       
-
-    pop rcx         ; second nombre
-    pop rbx         ; premier nombre
-    add rbx, rcx    ; addition
-
-    mov rdi, rbx    ; préparer pour itoa
-    call itoa
-
-    mov rdi, 1      ; afficher le résultat
-    mov rsi, result
-    mov rdx, rax
-    mov rax, 1
-    syscall
-
-    xor rdi, rdi    ; exit success
-    mov rax, 60
+    ; Convertir en string et afficher
+    call int_to_str
+    
+    mov rax, 60     ; exit success
+    xor rdi, rdi
     syscall
 
 exit_error:
-    mov rdi, 1
     mov rax, 60
+    mov rdi, 1
     syscall
 
-atoi:
-    xor rax, rax    ; initialiser le résultat
-    xor rbx, rbx    ; signe (0 = positif)
-    
-    cmp byte [rsi], '-'
-    jne .loop
-    mov rbx, 1      ; nombre négatif
-    inc rsi
-    
-.loop:
-    movzx rcx, byte [rsi]
-    test rcx, rcx
-    jz .end
-    cmp rcx, '0'
-    jl .end
-    cmp rcx, '9'
-    jg .end
-    sub rcx, '0'
-    imul rax, 10
-    add rax, rcx
-    inc rsi
-    jmp .loop
-    
-.end:
-    test rbx, rbx
-    jz .positive
-    neg rax         ; si négatif, inverser le signe
-.positive:
+str_to_int:
+    xor rax, rax
+    xor rcx, rcx
+    mov rbx, 10
+next_digit:
+    movzx rdx, byte [rsi + rcx]
+    test rdx, rdx
+    jz str_to_int_done
+    sub rdx, '0'
+    imul rax, rbx
+    add rax, rdx
+    inc rcx
+    jmp next_digit
+str_to_int_done:
     ret
 
-itoa:
-    mov rax, rdi
-    mov rcx, result
-    add rcx, 19
-    mov byte [rcx], 10  ; newline
-    
-    test rax, rax
-    jns .positive
-    
-    neg rax         ; si négatif, rendre positif
+int_to_str:
     push rax
-    mov byte [result], '-'
-    pop rax
-    
-.positive:
-    mov rbx, 10
-    
-.loop:
-    dec rcx
-    xor rdx, rdx
-    div rbx
-    add dl, '0'
-    mov [rcx], dl
+    mov r9, 10
+    xor rcx, rcx
     test rax, rax
-    jnz .loop
-    
-    test rdi, rdi   ; vérifier si le nombre était négatif
-    jns .end
+    jnz .l1
+    mov al, '0'
+    push rax
+    inc rcx
+    jmp .l2
+.l1:
+    test rax, rax
+    jz .l2
+    xor rdx, rdx
+    div r9
+    add dl, '0'
+    push rdx
+    inc rcx
+    jmp .l1
+.l2:
+    mov rax, 1      ; write
+    mov rdi, 1
+.l3:
+    test rcx, rcx
+    jz .l4
+    mov rsi, rsp
+    mov rdx, 1
+    push rcx
+    syscall
+    pop rcx
+    add rsp, 8
     dec rcx
-    mov byte [rcx], '-'
+    jmp .l3
+.l4:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, newline
+    mov rdx, 1
+    syscall
     
-.end:
-    mov rax, result
-    add rax, 20
-    sub rax, rcx
-    mov rsi, rcx
+    pop rax
     ret
