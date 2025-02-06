@@ -1,35 +1,65 @@
 section .data
-    message db "1337", 0
+    msg db '1337', 0Ah
+
+section .bss
+    input resb 3
 
 section .text
     global _start
 
 _start:
-    mov rdi, [rsp+8]
-    test rdi, rdi
-    jz exit_fail
+    mov rsi, input
+    call read_input
 
-    mov rsi, [rsp+8]
-    movzx rdi, byte [rsi]   ; Charger le premier caractère de l'argument
-    cmp rdi, '4'            ; Vérifier si c'est '4'
-    jne exit_fail           ; Si ce n'est pas '4', sortir
+    mov rsi, input
+    mov rdi, msg
+    call compare_strings
 
-    movzx rdi, byte [rsi+1] ; Charger le deuxième caractère
-    cmp rdi, '2'            ; Vérifier si c'est '2'
-    jne exit_fail           ; Si ce n'est pas '2', sortir
+    cmp rax, 0
+    je equal
+    mov rdi, 1
+    mov rsi, 1
+    mov rdx, 0
+    syscall
+    jmp end
 
-    mov rax, 1              ; syscall write
-    mov rdi, 1              ; stdout
-    mov rsi, message        ; Adresse de la chaîne "1337"
-    mov rdx, 4              ; Taille de la chaîne
+equal:
+    mov rdi, 1
+    mov rsi, msg
+    mov rdx, 5
+    mov rax, 0x1
     syscall
 
-    mov rax, 60             ; syscall exit
-    xor rdi, rdi            ; Code de retour 0
+    mov rdi, 0
+    mov rax, 60
     syscall
 
-exit_fail:
-    ; Quitter avec code 1
-    mov rax, 60             ; syscall exit
-    mov rdi, 1              ; Code de retour 1
+end:
+    mov rdi, 1
+    mov rax, 60
     syscall
+
+read_input:
+    mov rax, 0
+    mov rdi, 0
+    mov rdx, 3
+    syscall
+    ret
+
+compare_strings:
+    xor rax, rax
+    xor rcx, rcx
+.loop:
+    mov al, byte [rsi + rcx]
+    mov dl, byte [rdi + rcx]
+    cmp al, dl
+    jne .not_equal
+    test al, al
+    jz .equal
+    inc rcx
+    jmp .loop
+.not_equal:
+    mov rax, 1
+    ret
+.equal:
+    ret
