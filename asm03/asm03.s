@@ -5,34 +5,31 @@ section .text
     global _start
 
 _start:
-    ; Vérifier si un argument est passé
-    mov rdi, [rsp+8]         ; Le premier argument passé en paramètre
+    mov rdi, [rsp+8]
     test rdi, rdi
-    jz exit_fail             ; Si aucun argument, sortir avec code 1
+    jz exit_fail
 
-    ; Comparer l'argument avec "42"
-    mov rsi, rdi
-    movzx rdi, byte [rsi]    ; Charger le premier caractère de l'argument
-    cmp rdi, '4'
-    jne exit_fail            ; Si ce n'est pas "4", sortir avec code 1
-    movzx rdi, byte [rsi+1]  ; Charger le deuxième caractère
-    cmp rdi, '2'
-    jne exit_fail            ; Si ce n'est pas "2", sortir avec code 1
+    mov rsi, [rsp+8]
+    movzx rdi, byte [rsi]   ; Charger le premier caractère de l'argument
+    cmp rdi, '4'            ; Vérifier si c'est '4'
+    jne exit_fail           ; Si ce n'est pas '4', sortir
 
-    ; Afficher "1337"
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, message
-    mov rdx, 4
+    movzx rdi, byte [rsi+1] ; Charger le deuxième caractère
+    cmp rdi, '2'            ; Vérifier si c'est '2'
+    jne exit_fail           ; Si ce n'est pas '2', sortir
+
+    mov rax, 1              ; syscall write
+    mov rdi, 1              ; stdout
+    mov rsi, message        ; Adresse de la chaîne "1337"
+    mov rdx, 4              ; Taille de la chaîne
     syscall
 
-    ; Sortie avec code 0
-    mov rax, 60
-    xor rdi, rdi
+    mov rax, 60             ; syscall exit
+    xor rdi, rdi            ; Code de retour 0
     syscall
 
 exit_fail:
-    ; Sortie avec code 1
-    mov rax, 60
-    mov rdi, 1
+    ; Quitter avec code 1
+    mov rax, 60             ; syscall exit
+    mov rdi, 1              ; Code de retour 1
     syscall
