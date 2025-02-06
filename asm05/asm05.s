@@ -1,24 +1,31 @@
-section .data
-    msg db 'Hello, Universe!', 0
-
 section .text
-    global _start
+global _start
 
 _start:
-    cmp qword [rsp + 8], 0
-    je no_param
-
-    mov rdi, [rsp + 8]
+    pop rcx
+    cmp rcx, 2
+    jl exit
+    
+    pop rcx
+    pop rsi
+    
+    mov rdx, 0
+str_len:
+    cmp byte [rsi + rdx], 0
+    je print
+    inc rdx
+    jmp str_len
+    
+print:
     mov rax, 1
-    mov rsi, rdi
-    mov rdx, 15
+    mov rdi, 1
     syscall
-
+    
     mov rax, 60
-    xor rdi, rdi
+    mov rdi, 0
     syscall
 
-no_param:
+exit:
     mov rax, 60
     mov rdi, 1
     syscall
