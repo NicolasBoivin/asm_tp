@@ -9,7 +9,8 @@ _start:
     cmp rdi, 2
     jne not_42
 
-    mov rsi, [rsp + 8]
+    mov rsi, [rsp + 16]
+
     cmp byte [rsi], '4'
     jne not_42
     cmp byte [rsi + 1], '2'
