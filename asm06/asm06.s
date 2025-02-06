@@ -1,28 +1,32 @@
+section .bss
+    num resb 32
+    
 section .data
-    newline db 10, 0
+    minus db '-'
+    newline db 10
 
 section .text
 global _start
 
 _start:
-    pop rcx
+    pop rcx         ; nombre d'arguments
     cmp rcx, 3
     jne exit_error
     
-    pop rcx
-    pop rsi
-    pop rdi
-
-    call str_to_int
-    push rax
-    mov rsi, rdi
-    call str_to_int
-    pop rdi
-    add rax, rdi
-
-    call int_to_str
+    pop rcx         ; nom programme
+    pop rsi         ; premier nombre
+    call atoi
+    mov r8, rax     ; sauvegarde premier nombre
     
-    mov rax, 60
+    pop rsi         ; deuxième nombre
+    call atoi
+    add rax, r8     ; addition
+    
+    mov rdi, rax    ; prépare pour conversion
+    mov rsi, num
+    call itoa
+    
+    mov rax, 60     ; exit success
     xor rdi, rdi
     syscall
 
@@ -31,81 +35,63 @@ exit_error:
     mov rdi, 1
     syscall
 
-str_to_int:
+atoi:
     xor rax, rax
-    xor rcx, rcx
-    xor r8, r8
+    xor rcx, rcx        ; rcx = 0 (positif)
     cmp byte [rsi], '-'
-    jne next_digit
-    mov r8, 1
+    jne .conv
+    mov rcx, 1          ; rcx = 1 (négatif)
     inc rsi
-next_digit:
-    movzx rdx, byte [rsi + rcx]
+.conv:
+    xor rbx, rbx
+.next:
+    movzx rdx, byte [rsi]
     test rdx, rdx
-    jz str_to_int_done
+    jz .done
     sub rdx, '0'
-    mov rbx, 10
-    imul rax, rbx
-    add rax, rdx
-    inc rcx
-    jmp next_digit
-str_to_int_done:
-    test r8, r8
-    jz positive
+    imul rbx, 10
+    add rbx, rdx
+    inc rsi
+    jmp .next
+.done:
+    mov rax, rbx
+    test rcx, rcx
+    jz .pos
     neg rax
-positive:
+.pos:
     ret
 
-int_to_str:
-    push rax
-    mov r9, 10
-    xor rcx, rcx
-    
-    test rax, rax
-    jns positive_num
-    neg rax
-    push rax
-    mov al, '-'
-    push rax
-    inc rcx
-    pop rax
-    pop rax
-positive_num:
-    test rax, rax
-    jnz .l1
-    mov al, '0'
-    push rax
-    inc rcx
-    jmp .l2
-.l1:
-    test rax, rax
-    jz .l2
+itoa:
+    test rdi, rdi       ; test si négatif
+    jns .positive
+    push rdi
+    mov rax, 1          ; affiche '-'
+    mov rdi, 1
+    mov rsi, minus
+    mov rdx, 1
+    syscall
+    pop rdi
+    neg rdi            ; rend positif
+.positive:
+    mov rax, rdi
+    mov rsi, num
+    add rsi, 31
+    mov byte [rsi], 10  ; newline à la fin
+    mov rbx, 10
+.next:
+    dec rsi
     xor rdx, rdx
-    div r9
+    div rbx
     add dl, '0'
-    push rdx
-    inc rcx
-    jmp .l1
-.l2:
-    mov rax, 1
-    mov rdi, 1
-.l3:
-    test rcx, rcx
-    jz .l4
-    mov rsi, rsp
-    mov rdx, 1
-    push rcx
-    syscall
-    pop rcx
-    add rsp, 8
-    dec rcx
-    jmp .l3
-.l4:
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, newline
-    mov rdx, 1
-    syscall
+    mov [rsi], dl
+    test rax, rax
+    jnz .next
     
-    pop rax
+    mov rax, 1          ; affiche le nombre
+    mov rdi, 1
+    mov rdx, num
+    add rdx, 32
+    sub rdx, rsi
+    mov rax, 1
+    syscall
     ret
