@@ -1,31 +1,28 @@
 section .data
-    space db " ", 0
     newline db 10, 0
 
 section .text
 global _start
 
 _start:
-    pop rcx         ; nombre d'arguments
-    cmp rcx, 3      ; vérifier 2 arguments
+    pop rcx
+    cmp rcx, 3
     jne exit_error
     
-    pop rcx         ; nom programme
-    pop rsi         ; premier arg
-    pop rdi         ; deuxième arg
+    pop rcx
+    pop rsi
+    pop rdi
 
-    ; Convertir et additionner
-    call str_to_int  ; rsi -> rax
+    call str_to_int
     push rax
     mov rsi, rdi
-    call str_to_int  ; rdi -> rax
+    call str_to_int
     pop rdi
-    add rax, rdi    ; addition
+    add rax, rdi
 
-    ; Convertir en string et afficher
     call int_to_str
     
-    mov rax, 60     ; exit success
+    mov rax, 60
     xor rdi, rdi
     syscall
 
@@ -37,23 +34,43 @@ exit_error:
 str_to_int:
     xor rax, rax
     xor rcx, rcx
-    mov rbx, 10
+    xor r8, r8
+    cmp byte [rsi], '-'
+    jne next_digit
+    mov r8, 1
+    inc rsi
 next_digit:
     movzx rdx, byte [rsi + rcx]
     test rdx, rdx
     jz str_to_int_done
     sub rdx, '0'
+    mov rbx, 10
     imul rax, rbx
     add rax, rdx
     inc rcx
     jmp next_digit
 str_to_int_done:
+    test r8, r8
+    jz positive
+    neg rax
+positive:
     ret
 
 int_to_str:
     push rax
     mov r9, 10
     xor rcx, rcx
+    
+    test rax, rax
+    jns positive_num
+    neg rax
+    push rax
+    mov al, '-'
+    push rax
+    inc rcx
+    pop rax
+    pop rax
+positive_num:
     test rax, rax
     jnz .l1
     mov al, '0'
@@ -70,7 +87,7 @@ int_to_str:
     inc rcx
     jmp .l1
 .l2:
-    mov rax, 1      ; write
+    mov rax, 1
     mov rdi, 1
 .l3:
     test rcx, rcx
