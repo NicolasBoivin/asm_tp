@@ -13,5 +13,5 @@ _start:
 
     ; Code de sortie du programme
     mov rax, 60           ; numéro de l'appel système pour exit (60)
-    mov rdi, 1
+    mov rdi, 0            ; code de retour 0 pour indiquer un succès
     syscall               ; appel système pour quitter
