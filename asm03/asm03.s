@@ -1,65 +1,33 @@
 section .data
-    msg db '1337', 0Ah
-
-section .bss
-    input resb 3
+    msg db '1337', 10
 
 section .text
-    global _start
+global _start
 
 _start:
-    mov rsi, input
-    call read_input
+    mov rdi, [rsp]
+    cmp rdi, 2
+    jne not_42
 
-    mov rsi, input
-    mov rdi, msg
-    call compare_strings
+    mov rsi, [rsp + 8]
+    cmp byte [rsi], '4'
+    jne not_42
+    cmp byte [rsi + 1], '2'
+    jne not_42
+    cmp byte [rsi + 2], 0
+    jne not_42
 
-    cmp rax, 0
-    je equal
-    mov rdi, 1
-    mov rsi, 1
-    mov rdx, 0
-    syscall
-    jmp end
-
-equal:
+    mov rax, 1
     mov rdi, 1
     mov rsi, msg
     mov rdx, 5
-    mov rax, 0x1
     syscall
 
-    mov rdi, 0
     mov rax, 60
+    mov rdi, 0
     syscall
 
-end:
+not_42:
+    mov rax, 60
     mov rdi, 1
-    mov rax, 60
     syscall
-
-read_input:
-    mov rax, 0
-    mov rdi, 0
-    mov rdx, 3
-    syscall
-    ret
-
-compare_strings:
-    xor rax, rax
-    xor rcx, rcx
-.loop:
-    mov al, byte [rsi + rcx]
-    mov dl, byte [rdi + rcx]
-    cmp al, dl
-    jne .not_equal
-    test al, al
-    jz .equal
-    inc rcx
-    jmp .loop
-.not_equal:
-    mov rax, 1
-    ret
-.equal:
-    ret
