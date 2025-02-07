@@ -17,13 +17,13 @@ _start:
     mov     rax, 0
     mov     rdi, r12
     mov     rsi, rsp
-    mov     rdx, 8
+    mov     rdx, 4
     syscall
-    cmp     rax, 8
+    cmp     rax, 4
     jne     exit_fail
 
-    mov     rax, [rsp]
-    cmp     rax, 0x464c457f
+    mov     eax, dword [rsp]
+    cmp     eax, 0x464c457f
     jne     exit_fail
 
     mov     rax, 60
