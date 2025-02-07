@@ -1,49 +1,42 @@
 section .data
-    message db "Hello Universe!", 10
-    message_len equ $ - message
+    msg db "Hello Universe!", 10
+    msg_len equ $ - msg
 
 section .text
 global _start
 
 _start:
-    ; Vérifier le nombre d'arguments
     pop rdi
     cmp rdi, 2
-    jne exit_error
+    jne fail_exit
 
-    ; Récupérer le nom du fichier
-    pop rsi  ; Ignorer le premier argument (nom du programme)
-    pop rsi  ; Nom du fichier
+    pop rsi
+    pop rsi
 
-    ; Ouvrir le fichier en mode écriture/création
-    mov rax, 2        ; syscall: open
-    mov rdi, rsi      ; Nom du fichier
-    mov rsi, 0x601    ; O_WRONLY | O_CREAT | O_TRUNC
-    mov rdx, 0644o    ; Permissions rw-r--r--
+    mov rax, 2
+    mov rdi, rsi
+    mov rsi, 0x601
+    mov rdx, 0644o
     syscall
-    cmp rax, 0
-    js exit_error
-    mov rdi, rax      ; Sauvegarde du descripteur de fichier
+    test rax, rax
+    js fail_exit
+    mov rdi, rax
 
-    ; Écrire le message dans le fichier
-    mov rax, 1        ; syscall: write
-    mov rsi, message  ; Adresse du message
-    mov rdx, message_len  ; Longueur du message
+    mov rax, 1
+    mov rsi, msg
+    mov rdx, msg_len
     syscall
-    cmp rax, 0
-    js exit_error
+    test rax, rax
+    js fail_exit
 
-    ; Fermer le fichier
-    mov rax, 3        ; syscall: close
-    mov rdi, rdi      ; Fermer le fichier ouvert
+    mov rax, 3
     syscall
 
-    ; Sortie avec succès
-    mov rax, 60      ; syscall: exit
-    xor rdi, rdi     ; code de retour 0
+    mov rax, 60
+    xor rdi, rdi
     syscall
 
-exit_error:
-    mov rax, 60      ; syscall: exit
-    mov rdi, 1       ; code de retour 1
+fail_exit:
+    mov rax, 60
+    mov rdi, 1
     syscall
