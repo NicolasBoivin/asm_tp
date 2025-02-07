@@ -1,6 +1,7 @@
 section .bss
-    buffer resb 256  ; Stocke l'entrée utilisateur
-    length resb 1   ; Stocke la longueur de la chaîne
+    buffer resb 256   ; Stocke l'entrée utilisateur
+    reversed resb 256 ; Stocke la chaîne inversée
+    length resb 1     ; Stocke la longueur de la chaîne
 
 section .text
 global _start
@@ -20,29 +21,35 @@ _start:
 count_length:
     cmp byte [rsi + rcx], 10  ; Vérifier le saut de ligne
     je reverse_string
+    cmp byte [rsi + rcx], 0   ; Vérifier la fin de la chaîne (sécurité)
+    je reverse_string
     inc rcx
     jmp count_length
 
 reverse_string:
     mov byte [length], cl  ; Stocker la longueur
     dec rcx  ; Ignorer le saut de ligne
-    mov rdi, buffer
-    add rdi, rcx  ; Pointeur sur la fin
+    mov rsi, buffer
+    add rsi, rcx  ; Pointeur sur le dernier caractère
+    mov rdi, reversed  ; Pointeur sur le début du buffer inversé
 
-print_reversed:
-    cmp rcx, 0
-    jl exit_program
-    movzx rax, byte [rdi]
-    mov byte [buffer + rcx], al  ; Stocker à la position correcte
-    dec rdi
-    dec rcx
-    jmp print_reversed
+reverse_loop:
+    cmp rcx, -1
+    je print_result
+    mov al, [rsi]   ; Charger le caractère
+    mov [rdi], al   ; Stocker dans le buffer inversé
+    dec rsi         ; Reculer dans le buffer original
+    inc rdi         ; Avancer dans le buffer inversé
+    dec rcx         ; Décrémenter le compteur
+    jmp reverse_loop
 
-exit_program:
+print_result:
+    mov byte [rdi], 10  ; Ajouter un saut de ligne
     mov rax, 1       ; syscall: write
     mov rdi, 1       ; stdout
-    mov rsi, buffer  ; Adresse de la chaîne inversée
+    mov rsi, reversed ; Adresse de la chaîne inversée
     movzx rdx, byte [length]
+    inc rdx          ; Prendre en compte le saut de ligne
     syscall
 
     mov rax, 60      ; syscall: exit
