@@ -1,42 +1,47 @@
 section .data
-    msg db "Hello Universe!", 10
-    msg_len equ $ - msg
+    message     db "Hello Universe!"
+    message_len equ $ - message
 
 section .text
 global _start
 
 _start:
-    pop rdi
-    cmp rdi, 2
-    jne fail_exit
+    mov     rax, [rsp]
+    cmp     rax, 2
+    jl      exit_fail_no_arg
 
-    pop rsi
-    pop rsi
+    mov     rbx, [rsp+16]
 
-    mov rax, 2
-    mov rdi, rsi
-    mov rsi, 0x601
-    mov rdx, 0644o
+    mov     rax, 257
+    mov     rdi, -100
+    mov     rsi, rbx
+    mov     rdx, 577
+    mov     r10, 420
     syscall
-    test rax, rax
-    js fail_exit
-    mov rdi, rax
+    cmp     rax, 0
+    js      exit_fail
+    mov     r12, rax
 
-    mov rax, 1
-    mov rsi, msg
-    mov rdx, msg_len
-    syscall
-    test rax, rax
-    js fail_exit
-
-    mov rax, 3
+    mov     rax, 1
+    mov     rdi, r12
+    mov     rsi, message
+    mov     rdx, message_len
     syscall
 
-    mov rax, 60
-    xor rdi, rdi
+    mov     rax, 3
+    mov     rdi, r12
     syscall
 
-fail_exit:
-    mov rax, 60
-    mov rdi, 1
+    mov     rax, 60
+    xor     rdi, rdi
+    syscall
+
+exit_fail_no_arg:
+    mov     rax, 60
+    mov     rdi, 1
+    syscall
+
+exit_fail:
+    mov     rax, 60
+    mov     rdi, 1
     syscall
