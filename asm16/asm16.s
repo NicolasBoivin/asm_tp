@@ -12,12 +12,12 @@ _start:
     syscall
     cmp     rax, 0
     js      exit_fail
-    mov     r12, rax
+    mov     r12, rax  
 
     mov     rax, 0
     mov     rdi, r12
     mov     rsi, rsp
-    mov     rdx, 4096
+    mov     rdx, 8192
     syscall
     cmp     rax, 0
     jle     exit_fail
@@ -40,16 +40,21 @@ find_loop:
 patch_value:
     mov     dword [rbx], 0x4b433448
 
+    sub     rbx, rsp
     mov     rax, 8
     mov     rdi, r12
-    mov     rsi, 0
+    mov     rsi, rbx
     mov     rdx, 0
     syscall
 
     mov     rax, 1
     mov     rdi, r12
     mov     rsi, rsp
-    mov     rdx, 4096
+    mov     rdx, 8192
+    syscall
+
+    mov     rax, 105
+    mov     rdi, r12
     syscall
 
     mov     rax, 3
