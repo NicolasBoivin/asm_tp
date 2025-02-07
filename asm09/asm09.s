@@ -1,18 +1,19 @@
 section .data
-    hex_chars db "0123456789ABCDEF"
+    hex_chars db "0123456789ABCDEF", 0
     newline db 10
 
 section .bss
     result resb 32
+    number resq 1
 
 section .text
 global _start
 
 _start:
     pop rcx
+    cmp rcx, 2
+    je hex_mode
     cmp rcx, 3
-    je decimal_to_hex
-    cmp rcx, 4
     je check_binary
     jmp exit_error
 
@@ -23,28 +24,26 @@ check_binary:
     jne exit_error
     cmp byte [rsi + 1], 'b'
     jne exit_error
-    jmp decimal_to_binary
+    
+    pop rsi
+    call str_to_num
+    mov [number], rax
+    call convert_to_binary
+    jmp exit_success
 
-decimal_to_hex:
+hex_mode:
     pop rcx
     pop rsi
     call str_to_num
-    mov rdi, rax
+    mov [number], rax
     call convert_to_hex
-    jmp end_success
-
-decimal_to_binary:
-    pop rsi
-    call str_to_num
-    mov rdi, rax
-    call convert_to_binary
-    jmp end_success
+    jmp exit_success
 
 convert_to_hex:
-    mov rax, rdi
     mov rsi, result
     add rsi, 31
     mov byte [rsi], 10
+    mov rax, [number]
     mov rbx, 16
 
 .next:
@@ -61,15 +60,14 @@ convert_to_hex:
     mov rdx, result
     add rdx, 32
     sub rdx, rsi
-    mov rax, 1
     syscall
     ret
 
 convert_to_binary:
-    mov rax, rdi
     mov rsi, result
     add rsi, 31
     mov byte [rsi], 10
+    mov rax, [number]
     mov rbx, 2
 
 .next:
@@ -86,7 +84,6 @@ convert_to_binary:
     mov rdx, result
     add rdx, 32
     sub rdx, rsi
-    mov rax, 1
     syscall
     ret
 
@@ -115,7 +112,7 @@ str_to_num:
 .end:
     ret
 
-end_success:
+exit_success:
     mov rax, 60
     xor rdi, rdi
     syscall
