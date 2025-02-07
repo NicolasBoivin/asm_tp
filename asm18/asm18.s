@@ -4,6 +4,8 @@ section .bss
 section .data
     sockaddr resb 16
     timeout dq 1, 0
+    msg db "Timeout: no response from server", 10, 0
+    hello_msg db "Hello, client!", 10, 0
 
 section .text
     global _start
@@ -59,6 +61,11 @@ _start:
 
 timeout_exit:
     mov rax, 1
+    mov rdi, 1
+    mov rsi, msg
+    mov rdx, 27
+    syscall
+    mov rax, 60
     mov rdi, 1
     syscall
 
