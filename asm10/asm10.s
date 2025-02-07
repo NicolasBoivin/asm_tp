@@ -9,23 +9,23 @@ _start:
     cmp rcx, 4
     jne exit_error
     
-    pop rcx         ; nom programme
-    pop rsi         ; premier nombre
+    pop rcx
+    pop rsi
     call str_to_num
-    mov rbx, rax    ; rbx = premier nombre
+    mov rbx, rax
     
-    pop rsi         ; deuxième nombre
+    pop rsi
     call str_to_num
-    cmp rax, rbx    ; compare avec le plus grand actuel
+    cmp rax, rbx
     jle next
-    mov rbx, rax    ; si plus grand, met à jour
+    mov rbx, rax
     
 next:
-    pop rsi         ; troisième nombre
+    pop rsi
     call str_to_num
-    cmp rax, rbx    ; compare avec le plus grand actuel
+    cmp rax, rbx
     jle print_result
-    mov rbx, rax    ; si plus grand, met à jour
+    mov rbx, rax
     
 print_result:
     mov rdi, rbx
@@ -37,6 +37,11 @@ print_result:
 
 str_to_num:
     xor rax, rax
+    xor r8, r8
+    cmp byte [rsi], '-'
+    jne .next
+    mov r8, 1
+    inc rsi
 
 .next:
     movzx rcx, byte [rsi]
@@ -58,6 +63,10 @@ str_to_num:
     ret
 
 .end:
+    test r8, r8
+    jz .positive
+    neg rax
+.positive:
     ret
 
 num_to_str:
@@ -65,6 +74,17 @@ num_to_str:
     mov rsi, result
     add rsi, 31
     mov byte [rsi], 10
+    
+    test rax, rax
+    jns .convert
+    neg rax
+    push rax
+    mov al, '-'
+    dec rsi
+    mov [rsi], al
+    pop rax
+
+.convert:
     mov rbx, 10
 
 .next:
