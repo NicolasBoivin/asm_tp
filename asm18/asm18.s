@@ -32,11 +32,10 @@ _start:
     test rax, rax
     js error
 
-    mov rax, 44
+    mov rax, 42
     mov rdi, r12
-    mov rsi, 0
-    mov rdx, timeout
-    mov r10, 8
+    mov rsi, sockaddr
+    mov rdx, 16
     syscall
     test rax, rax
     js error
@@ -55,6 +54,15 @@ _start:
     mov rsi, buffer
     syscall
 
+    cmp rdx, 0
+    je timeout_exit
+
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, hello_msg
+    mov rdx, 14
+    syscall
+
     mov rax, 60
     xor rdi, rdi
     syscall
@@ -63,7 +71,7 @@ timeout_exit:
     mov rax, 1
     mov rdi, 1
     mov rsi, msg
-    mov rdx, 27
+    mov rdx, 31
     syscall
     mov rax, 60
     mov rdi, 1
