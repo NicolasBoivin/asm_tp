@@ -1,60 +1,80 @@
+section .data
+    pattern dd 0x37333331
+    patch   dd 0x4B433448
+
+section .bss
+    window  resb 4
+    temp    resb 1
+
 section .text
     global _start
 
 _start:
     mov     rax, [rsp]
     cmp     rax, 2
-    jl      exit_fail_no_arg
+    jne     no_file_arg
 
-    mov     rdi, [rsp+16]
-    mov     rax, 2
-    mov     rsi, 2
+    mov     rsi, [rsp+16]
+    mov     rdi, -100
+    mov     rdx, 2
+    mov     r10, 0
+    mov     rax, 257
     syscall
     cmp     rax, 0
-    js      exit_fail
-    mov     r12, rax  
+    js      open_error
+    mov     r12, rax
 
     mov     rax, 0
     mov     rdi, r12
-    mov     rsi, rsp
-    mov     rdx, 8192
+    lea     rsi, [window]
+    mov     rdx, 4
     syscall
-    cmp     rax, 0
-    jle     exit_fail
+    cmp     rax, 4
+    jne     read_error
 
-    mov     rbx, rsp
-    mov     rcx, rax
+    mov     r13, 4
+    mov     eax, dword [window]
+    cmp     eax, [pattern]
+    je      found_patch
 
-find_loop:
-    cmp     rcx, 4
-    jl      exit_fail
+search_loop:
+    mov     rax, 0
+    mov     rdi, r12
+    lea     rsi, [temp]
+    mov     rdx, 1
+    syscall
+    cmp     rax, 1
+    jne     not_found
 
-    mov     eax, dword [rbx]
-    cmp     eax, 0x37333331
-    je      patch_value
+    inc     r13
+    mov     al, byte [window+1]
+    mov     byte [window], al
+    mov     al, byte [window+2]
+    mov     byte [window+1], al
+    mov     al, byte [window+3]
+    mov     byte [window+2], al
+    mov     al, byte [temp]
+    mov     byte [window+3], al
 
-    inc     rbx
-    dec     rcx
-    jmp     find_loop
+    mov     eax, dword [window]
+    cmp     eax, [pattern]
+    je      found_patch
 
-patch_value:
-    mov     dword [rbx], 0x4b433448
+    jmp     search_loop
 
-    sub     rbx, rsp
+found_patch:
+    mov     rbx, r13
+    sub     rbx, 4
     mov     rax, 8
     mov     rdi, r12
     mov     rsi, rbx
-    mov     rdx, 0
+    xor     rdx, rdx
     syscall
 
     mov     rax, 1
     mov     rdi, r12
-    mov     rsi, rsp
-    mov     rdx, 8192
-    syscall
-
-    mov     rax, 105
-    mov     rdi, r12
+    lea     rsi, [patch]
+    mov     rdx, 4
     syscall
 
     mov     rax, 3
@@ -65,12 +85,30 @@ patch_value:
     xor     rdi, rdi
     syscall
 
-exit_fail_no_arg:
+not_found:
+    mov     rax, 3
+    mov     rdi, r12
+    syscall
+
     mov     rax, 60
     mov     rdi, 1
     syscall
 
-exit_fail:
+read_error:
+    mov     rax, 3
+    mov     rdi, r12
+    syscall
+
+    mov     rax, 60
+    mov     rdi, 1
+    syscall
+
+no_file_arg:
+    mov     rax, 60
+    mov     rdi, 1
+    syscall
+
+open_error:
     mov     rax, 60
     mov     rdi, 1
     syscall
