@@ -70,19 +70,17 @@ str_to_num:
     ret
 
 num_to_str:
-    mov rax, rdi
+    push rdi
     mov rsi, result
     add rsi, 31
     mov byte [rsi], 10
     
+    pop rax
+    mov rdi, 0
     test rax, rax
     jns .convert
     neg rax
-    push rax
-    mov al, '-'
-    dec rsi
-    mov [rsi], al
-    pop rax
+    mov rdi, 1
 
 .convert:
     mov rbx, 10
@@ -96,12 +94,17 @@ num_to_str:
     test rax, rax
     jnz .next
 
+    test rdi, rdi
+    jz .print
+    dec rsi
+    mov byte [rsi], '-'
+
+.print:
     mov rax, 1
     mov rdi, 1
     mov rdx, result
     add rdx, 32
     sub rdx, rsi
-    mov rax, 1
     syscall
     ret
 
