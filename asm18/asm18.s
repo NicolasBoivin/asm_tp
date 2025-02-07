@@ -6,6 +6,7 @@ section .data
     timeout dq 1, 0
     msg db "Timeout: no response from server", 10, 0
     hello_msg db "Hello, client!", 10, 0
+    request_msg db "PING", 4
 
 section .text
     global _start
@@ -24,26 +25,29 @@ _start:
     mov word [sockaddr+2], 0x3905
     mov dword [sockaddr+4], 0x0100007F
 
-    mov rax, 42
+    mov rax, 44
     mov rdi, r12
-    mov rsi, sockaddr
-    mov rdx, 16
+    mov rsi, request_msg
+    mov rdx, 4
+    mov r10, sockaddr
+    mov r8, 16
     syscall
     test rax, rax
     js error
 
-    mov rax, 42
+    mov rax, 23
     mov rdi, r12
-    mov rsi, sockaddr
-    mov rdx, 16
+    mov rsi, 0
+    mov rdx, timeout
+    mov r10, 0
     syscall
-    test rax, rax
-    js error
 
-    mov rax, 0
+    mov rax, 45
     mov rdi, r12
     mov rsi, buffer
     mov rdx, 1024
+    mov r10, 0
+    mov r8, 0
     syscall
     test rax, rax
     jle timeout_exit
