@@ -156,4 +156,8 @@ error_recv:       db "Recvfrom error",10
 recv_error_len:  equ $ - error_recv
 
 timeout_notice:    db "Timeout: no response from server",10
+<<<<<<< HEAD
 timeout_len: equ $ - timeout_notice
+=======
+timeout_len: equ $ - timeout_notice
+>>>>>>> bee21ff61f718f212b895d40c092bdf9e5fe8938
