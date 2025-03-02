@@ -130,4 +130,4 @@ handle_file_error:
 exit_program:
     mov     rax, 60
     mov     rdi, 1
-    syscall
+    syscall 
