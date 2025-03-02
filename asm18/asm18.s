@@ -1,117 +1,159 @@
- .section .data
-prefix:
-    .ascii "message: \""
-prefix_len = . - prefix
+global _start
 
-suffix:
-    .ascii "\"\n"
-suffix_len = . - suffix
-
-timeout_msg:
-    .ascii "Timeout: no response from server\n"
-timeout_msg_len = . - timeout_msg
-
-query:
-    .ascii "ping"
-query_len = . - query
-
-dest:
-    .word 2
-    .word 0x3905
-    .long 0x0100007f
-    .quad 0
-
-timeval:
-    .quad 1
-    .quad 0
-
-    .section .bss
-    .lcomm recvbuf,256
-
-    .section .text
-    .global _start
+section .text
 _start:
-    movq    $41, %rax
-    movq    $2, %rdi
-    movq    $2, %rsi
-    xor    %rdx, %rdx
+    mov     rax, 41
+    mov     rdi, 2
+    mov     rsi, 2
+    xor     rdx, rdx
     syscall
-    cmpq    $0, %rax
-    js    exit_fail
-    movq    %rax, %r12
+    cmp     rax, 0
+    jl      socket_error
+    mov     r15, rax
 
-    movq    %r12, %rdi
-    movq    $1, %rsi
-    movq    $20, %rdx
-    leaq    timeval(%rip), %r10
-    movq    %r10, %r10
-    movq    $16, %r8
-    movq    $54, %rax
+    mov     rax, 54
+    mov     rdi, r15
+    mov     rsi, 1
+    mov     rdx, 20
+    lea     r10, [rel timeout_config]
+    mov     r8, 16
     syscall
+    cmp     rax, 0
+    jl      opt_error
 
-    movq    %r12, %rdi
-    leaq    query(%rip), %rsi
-    movq    $query_len, %rdx
-    xor    %r10, %r10
-    leaq    dest(%rip), %r8
-    movq    $16, %r9
-    movq    $44, %rax
+    mov     rax, 44
+    mov     rdi, r15
+    lea     rsi, [rel request_data]
+    mov     rdx, request_len
+    xor     r10, r10
+    lea     r8, [rel server_addr]
+    mov     r9, 16
     syscall
+    cmp     rax, 0
+    jl      send_error
 
-    movq    %r12, %rdi
-    leaq    recvbuf(%rip), %rsi
-    movq    $256, %rdx
-    xor    %r10, %r10
-    xor    %r8, %r8
-    xor    %r9, %r9
-    movq    $45, %rax
+    sub     rsp, 1024
+    mov     rax, 45
+    mov     rdi, r15
+    mov     rsi, rsp
+    mov     rdx, 1024
+    xor     r10, r10
+    xor     r8, r8
+    xor     r9, r9
     syscall
-    cmpq    $0, %rax
-    js    timeout_label
-    movq    %rax, %r13
+    cmp     rax, 0
+    jl      receive_error
 
-    movq    $1, %rdi
-    leaq    prefix(%rip), %rsi
-    movq    $prefix_len, %rdx
-    movq    $1, %rax
-    syscall
+    mov     r14, rax
 
-    movq    $1, %rdi
-    leaq    recvbuf(%rip), %rsi
-    movq    %r13, %rdx
-    movq    $1, %rax
-    syscall
-
-    movq    $1, %rdi
-    leaq    suffix(%rip), %rsi
-    movq    $suffix_len, %rdx
-    movq    $1, %rax
+    mov     rax, 1
+    mov     rdi, 1
+    lea     rsi, [rel output_prefix]
+    mov     rdx, prefix_len
     syscall
 
-    movq    %r12, %rdi
-    movq    $3, %rax
+    mov     rax, 1
+    mov     rdi, 1
+    mov     rsi, rsp
+    mov     rdx, r14
     syscall
 
-    movq    $60, %rax
-    xor    %rdi, %rdi
+    mov     rax, 1
+    mov     rdi, 1
+    lea     rsi, [rel output_suffix]
+    mov     rdx, suffix_len
     syscall
 
-timeout_label:
-    movq    $1, %rdi
-    leaq    timeout_msg(%rip), %rsi
-    movq    $timeout_msg_len, %rdx
-    movq    $1, %rax
+    add     rsp, 1024
+
+    mov     rax, 3
+    mov     rdi, r15
     syscall
 
-    movq    %r12, %rdi
-    movq    $3, %rax
+    mov     rax, 60
+    xor     rdi, rdi
     syscall
 
-    movq    $60, %rax
-    movq    $1, %rdi
+socket_error:
+    mov     rax, 1
+    mov     rdi, 2
+    lea     rsi, [rel error_socket]
+    mov     rdx, socket_error_len
+    syscall
+    jmp     exit_failure
+
+opt_error:
+    mov     rax, 1
+    mov     rdi, 2
+    lea     rsi, [rel error_setsockopt]
+    mov     rdx, setsockopt_error_len
+    syscall
+    jmp     exit_failure
+
+send_error:
+    mov     rax, 1
+    mov     rdi, 2
+    lea     rsi, [rel error_send]
+    mov     rdx, send_error_len
+    syscall
+    jmp     exit_failure
+
+receive_error:
+    mov     rcx, rax
+    cmp     rcx, -11
+    je      timeout_handler
+
+    mov     rax, 1
+    mov     rdi, 2
+    lea     rsi, [rel error_recv]
+    mov     rdx, recv_error_len
+    syscall
+    jmp     exit_failure
+
+timeout_handler:
+    mov     rax, 1
+    mov     rdi, 1
+    lea     rsi, [rel timeout_notice]
+    mov     rdx, timeout_len
+    syscall
+    jmp     exit_failure
+
+exit_failure:
+    mov     rax, 60
+    mov     rdi, 1
     syscall
 
-exit_fail:
-    movq    $60, %rax
-    movq    $1, %rdi
-    syscall
+section .data
+timeout_config:
+    dq 1
+    dq 0
+
+server_addr:
+    dw 2
+    dw 0x3905
+    dd 0x0100007F
+    times 8 db 0
+
+request_data:    db "Hello, server!",10
+request_len:    equ $ - request_data
+
+output_prefix: db 'message: "'
+prefix_len: equ $ - output_prefix
+
+output_suffix: db '"', 10
+suffix_len: equ $ - output_suffix
+
+error_socket:     db "Socket error",10
+socket_error_len: equ $ - error_socket
+
+error_setsockopt: db "Setsockopt error",10
+setsockopt_error_len: equ $ - error_setsockopt
+
+error_send:       db "Sendto error",10
+send_error_len:  equ $ - error_send
+
+error_recv:       db "Recvfrom error",10
+recv_error_len:  equ $ - error_recv
+
+timeout_notice:    db "Timeout: no response from server",10
+timeout_len: equ $ - timeout_notice
