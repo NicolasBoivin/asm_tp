@@ -1,105 +1,133 @@
-.section .data
-    udp_port:    .word 0x3905          # Port 1337 en big-endian
-    log_path:    .asciz "messages"     # Chemin du fichier de log
-    start_msg:   .asciz "\n⏳ Listening on port 1337\n"
-    line_end:    .asciz "\n"
+global _start
 
-.section .bss
-    msg_buffer:  .skip 1024            # Espace pour les données entrantes
-    addr_struct: .skip 16              # Structure sockaddr pour les opérations réseau
+section .data
+    server_msg:         db "⏳ Listening on port 1337", 10
+    server_msg_len:     equ $ - server_msg
 
-.section .text
-    .global _start
+    err_socket:         db "Socket error",10
+    err_socket_len:     equ $ - err_socket
 
+    err_bind:           db "Bind error",10
+    err_bind_len:       equ $ - err_bind
+
+    err_file:           db "Open file error",10
+    err_file_len:       equ $ - err_file
+
+    line_break:         db 10
+    line_break_len:     equ $ - line_break
+
+    server_addr:
+        dw 2
+        dw 0x3905
+        dd 0
+        times 8 db 0
+    addr_size: equ $ - server_addr
+
+    log_file:    db "messages",0
+
+section .text
 _start:
-    # Initialiser le socket (AF_INET, SOCK_DGRAM, 0)
-    mov $41, %rax           # socket syscall
-    mov $2, %rdi            # AF_INET
-    mov $2, %rsi            # SOCK_DGRAM
-    xor %rdx, %rdx          # Protocol = 0
+    mov     rax, 41
+    mov     rdi, 2
+    mov     rsi, 2
+    xor     rdx, rdx
     syscall
-    test %rax, %rax
-    js terminate            # Sortie si erreur
-    mov %rax, %r15          # Conserver le socket dans r15
+    test    rax, rax
+    js      handle_socket_error
+    mov     r14, rax
 
-    # Configurer sockaddr_in
-    movw $2, addr_struct    # AF_INET
-    movw udp_port, %cx      # Port UDP
-    movw %cx, addr_struct+2 # Placer le port dans la structure
-    movl $0, addr_struct+4  # INADDR_ANY (toutes les interfaces)
-    movq $0, addr_struct+8  # Padding à zéro
-
-    # Bind socket à l'adresse et port
-    mov $49, %rax           # bind syscall
-    mov %r15, %rdi          # Socket FD
-    lea addr_struct, %rsi   # Adresse de liaison
-    mov $16, %rdx           # Taille de la structure
+    mov     rax, 49
+    mov     rdi, r14
+    lea     rsi, [rel server_addr]
+    mov     rdx, addr_size
     syscall
-    test %rax, %rax
-    js terminate            # Sortie si erreur
+    test    rax, rax
+    js      handle_bind_error
 
-    # Afficher message d'écoute
-    mov $1, %rax            # write syscall
-    mov $1, %rdi            # STDOUT
-    lea start_msg, %rsi     # Message
-    mov $24, %rdx           # Longueur
+    mov     rax, 257
+    mov     rdi, -100
+    lea     rsi, [rel log_file]
+    mov     rdx, 1089
+    mov     r10, 420
     syscall
+    test    rax, rax
+    js      handle_file_error
+    mov     r15, rax
 
-listen_loop:
-    # Attendre un message UDP
-    mov $45, %rax           # recvfrom syscall
-    mov %r15, %rdi          # Socket FD
-    lea msg_buffer, %rsi    # Buffer de réception
-    mov $1024, %rdx         # Taille max
-    xor %r10, %r10          # Flags = 0
-    lea addr_struct, %r8    # Client address
-    mov $16, %r9            # Addrlen
-    syscall
-    test %rax, %rax
-    js terminate            # Sortie si erreur
-    mov %rax, %r14          # Sauvegarder longueur du message
-
-    # Ouvrir fichier de log (append mode)
-    mov $2, %rax            # open syscall
-    lea log_path, %rdi      # Nom du fichier
-    mov $0x441, %rsi        # O_WRONLY | O_APPEND | O_CREAT
-    mov $0644, %rdx         # Permissions (-rw-r--r--)
-    syscall
-    test %rax, %rax
-    js listen_loop          # Continuer même si échec d'ouverture
-    mov %rax, %rbx          # Sauvegarder FD du fichier
-
-    # Écrire le message dans le fichier
-    mov $1, %rax            # write syscall
-    mov %rbx, %rdi          # File descriptor
-    lea msg_buffer, %rsi    # Buffer avec le message
-    mov %r14, %rdx          # Longueur du message
+    mov     rax, 1
+    mov     rdi, 1
+    lea     rsi, [rel server_msg]
+    mov     rdx, server_msg_len
     syscall
 
-    # Ajouter une nouvelle ligne
-    mov $1, %rax            # write syscall
-    mov %rbx, %rdi          # File descriptor
-    lea line_end, %rsi      # Caractère nouvelle ligne
-    mov $1, %rdx            # Longueur 1
+receive_loop:
+    sub     rsp, 1024
+
+    mov     rax, 45
+    mov     rdi, r14
+    mov     rsi, rsp
+    mov     rdx, 1024
+    xor     r10, r10
+    xor     r8, r8
+    xor     r9, r9
+    syscall
+    test    rax, rax
+    js      handle_receive_error
+    mov     rbx, rax
+
+    mov     rax, 1
+    mov     rdi, r15
+    mov     rsi, rsp
+    mov     rdx, rbx
     syscall
 
-    # Fermer le fichier
-    mov $3, %rax            # close syscall
-    mov %rbx, %rdi          # File descriptor
+    cmp     rbx, 0
+    je      append_newline
+    
+    mov     al, byte [rsp + rbx - 1]
+    cmp     al, 10
+    je      skip_newline
+    
+append_newline:
+    mov     rax, 1
+    mov     rdi, r15
+    lea     rsi, [rel line_break]
+    mov     rdx, line_break_len
     syscall
+    
+skip_newline:
+    add     rsp, 1024
+    jmp     receive_loop
 
-    # Retourner en attente
-    jmp listen_loop
+handle_receive_error:
+    add     rsp, 1024
+    jmp     receive_loop
 
-terminate:
-    # Fermer le socket si ouvert
-    cmp $0, %r15
-    jl exit
-    mov $3, %rax            # close syscall
-    mov %r15, %rdi          # Socket FD
+handle_socket_error:
+    mov     rax, 1
+    mov     rdi, 2
+    lea     rsi, [rel err_socket]
+    mov     rdx, err_socket_len
     syscall
+    jmp     exit_program
 
-exit:
-    mov $60, %rax           # exit syscall
-    xor %rdi, %rdi          # Code retour 0
+handle_bind_error:
+    mov     rax, 1
+    mov     rdi, 2
+    lea     rsi, [rel err_bind]
+    mov     rdx, err_bind_len
+    syscall
+    jmp     exit_program
+
+handle_file_error:
+    mov     rax, 1
+    mov     rdi, 2
+    lea     rsi, [rel err_file]
+    mov     rdx, err_file_len
+    syscall
+    jmp     exit_program
+
+exit_program:
+    mov     rax, 60
+    mov     rdi, 1
     syscall
